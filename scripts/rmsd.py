@@ -157,6 +157,8 @@ def main():
                     row[f"RMSD_chA_aft_chB_align_{m1}_{m2}"] = round(r_a_after_b, 3)
                     all_cols.add(f"RMSD_chA_aft_chB_align_{m1}_{m2}")
                 except Exception as e:
+                    # If alignment or RMSD fails, record error but only alpha numerical values
+                    e=str(e).replace(",", ";").replace("\n", " ").replace("\r", " ").replace("\t", " ")
                     row[f"RMSD_chA_aft_chB_align_{m1}_{m2}"] = f"ERR:{e}"
                     all_cols.add(f"RMSD_chA_aft_chB_align_{m1}_{m2}")
 
