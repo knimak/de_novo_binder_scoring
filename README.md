@@ -283,7 +283,7 @@ python -m pymol -c -d "run ../scripts/pymol_metrics.py"
 ### Full workflow example
 
 See **`example_run.sh`** for a complete pipeline example including environment loading/unloading. 
-Running the full example with 3 structures; including all structure prediction models and relaxation of all input and output structures takes ~40min. 
+Running the full example with 3 structures; including all structure prediction models and relaxation of all input and output structures takes ~40min on a L40S. 
 
 ---
 
