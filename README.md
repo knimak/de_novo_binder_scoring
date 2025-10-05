@@ -5,9 +5,19 @@ This repository contains the scripts and analysis described in:
 
 ---
 
+## System requirements
+
+- **OS:** Tested on AlmaLinux 9.6 (Sage Margay). Other modern x86_64 Linux distributions may work but are untested.
+- **CPU:** All analysis scripts in this repo run on CPU. PyRosetta-based relaxation is CPU-bound and benefits from multiple cores for parallelization.
+- **GPU (required for structure prediction):** Structure prediction workflows (AF2 initial guess, ColabFold, Boltz, AF3) require a compatible GPU. Please see the respective repositories for exact GPU/CUDA requirements (linked below).
+- **Environment:** A Conda environment is provided (`environment.yml`).
+
+**Note**: PyRosetta is used in `compute_rosetta_metrics.py` and `rmsd.py`, which requires a license.
+
+
 ## Installation
 
-Clone and set up the environment:
+Clone and set up the environment (~30min):
 
 ```bash
 git clone https://github.com/DigBioLab/de_novo_binder_scoring.git
@@ -18,9 +28,7 @@ conda activate binder_scoring_env
 chmod +x ./functions/DAlphaBall.gcc
 ```
 
-**Note 1**: This repo uses [PyRosetta](https://www.pyrosetta.org/downloads) for two scripts (`compute_rosetta_metrics.py` and `rmsd.py`), which requires a license for commercial use.
-
-**Note 2**: The used structure predictions tools (AF2 initial guess, ColabFold, Boltz and AF3) require seperate installations.
+**Note**: The used structure predictions tools (AF2 initial guess, ColabFold, Boltz and AF3) require seperate installations.
 
 ---
 
@@ -274,7 +282,8 @@ python -m pymol -c -d "run ../scripts/pymol_metrics.py"
 
 ### Full workflow example
 
-See **`example_run.sh`** for a complete pipeline example including environment loading/unloading.
+See **`example_run.sh`** for a complete pipeline example including environment loading/unloading. 
+Running the full example with 3 structures; including all structure prediction models and relaxation of all input and output structures takes ~40min. 
 
 ---
 
