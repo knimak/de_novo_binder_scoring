@@ -187,8 +187,8 @@ python ./scripts/run_ipsae_batch.py \
   --run-csv "${OUTPUT_DIR}/run.csv" \
   --out-csv "${OUTPUT_DIR}/ipsae_and_ipae.csv" \
   --af3-dir "${OUTPUT_DIR}/AF3" \
-  --boltz1-dir "${OUTPUT_DIR}/Boltz" \
-  --colab-dir "${OUTPUT_DIR}/ColabFold" \
+  --boltz1-dir "${OUTPUT_DIR}/Boltz/boltz_results_input_folder" \
+  --colab-dir "${OUTPUT_DIR}/ColabFold/ptm_output" \
   --ipsae-script-path ./scripts/ipsae_w_ipae.py \
 
 

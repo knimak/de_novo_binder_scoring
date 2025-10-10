@@ -1,12 +1,12 @@
-2025-09-04 08:34:47,578 Running colabfold 1.5.5 (acc0bf772f22feb7f887ad132b7313ff415c8a9f)
-2025-09-04 08:34:48,528 Running on GPU
-2025-09-04 08:34:49,913 Found 4 citations for tools or databases
-2025-09-04 08:34:49,914 Query 1/4: pmhc_binder_fused_target_chain_target_2_chain_D (length 9)
-2025-09-04 08:34:51,154 Saved /zhome/projects/project.maxove.anryg/de_novo_binder_scoring/example_output1/unique_msa/msa/pmhc_binder_fused_target_chain_target_2_chain_D.pickle
-2025-09-04 08:34:51,542 Query 2/4: pmhc_binder_fused_target_chain_target_2_chain_C (length 100)
-2025-09-04 08:34:53,452 Saved /zhome/projects/project.maxove.anryg/de_novo_binder_scoring/example_output1/unique_msa/msa/pmhc_binder_fused_target_chain_target_2_chain_C.pickle
-2025-09-04 08:34:54,005 Query 3/4: pdl1_binder_target_1_chain_B (length 115)
-2025-09-04 08:34:55,888 Saved /zhome/projects/project.maxove.anryg/de_novo_binder_scoring/example_output1/unique_msa/msa/pdl1_binder_target_1_chain_B.pickle
-2025-09-04 08:34:56,436 Query 4/4: pmhc_binder_fused_target_chain_target_2_chain_B (length 276)
-2025-09-04 08:34:58,570 Saved /zhome/projects/project.maxove.anryg/de_novo_binder_scoring/example_output1/unique_msa/msa/pmhc_binder_fused_target_chain_target_2_chain_B.pickle
-2025-09-04 08:35:00,272 Done
+2025-10-09 19:42:26,682 Running colabfold 1.5.5 (acc0bf772f22feb7f887ad132b7313ff415c8a9f)
+2025-10-09 19:42:26,998 Running on GPU
+2025-10-09 19:42:27,285 Found 4 citations for tools or databases
+2025-10-09 19:42:27,286 Query 1/4: pmhc_binder_fused_target_chain_target_2_chain_D (length 9)
+2025-10-09 19:42:27,288 Loaded /zhome/projects/project.maxove.anryg/de_novo_binder_scoring/example_output/unique_msa/msa/pmhc_binder_fused_target_chain_target_2_chain_D.pickle
+2025-10-09 19:42:27,726 Query 2/4: pmhc_binder_fused_target_chain_target_2_chain_C (length 100)
+2025-10-09 19:42:27,747 Loaded /zhome/projects/project.maxove.anryg/de_novo_binder_scoring/example_output/unique_msa/msa/pmhc_binder_fused_target_chain_target_2_chain_C.pickle
+2025-10-09 19:42:28,402 Query 3/4: pdl1_binder_target_1_chain_B (length 115)
+2025-10-09 19:42:28,425 Loaded /zhome/projects/project.maxove.anryg/de_novo_binder_scoring/example_output/unique_msa/msa/pdl1_binder_target_1_chain_B.pickle
+2025-10-09 19:42:29,030 Query 4/4: pmhc_binder_fused_target_chain_target_2_chain_B (length 276)
+2025-10-09 19:42:29,076 Loaded /zhome/projects/project.maxove.anryg/de_novo_binder_scoring/example_output/unique_msa/msa/pmhc_binder_fused_target_chain_target_2_chain_B.pickle
+2025-10-09 19:42:30,931 Done

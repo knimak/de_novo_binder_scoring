@@ -101,7 +101,7 @@ This is done by running the process inputs in the `hybrid` mode, and having a co
 
 ### 2. Generate MSAs
 
-Generate MSAs using the ColabFold server (MMseqs2). Requires a separate [ColabFold](https://github.com/YoshitakaMo/localcolabfold) installation:
+Generate MSAs using the ColabFold server (MMseqs2). Requires a separate [ColabFold](https://github.com/YoshitakaMo/localcolabfold) installation. Only use the API if you only running a couple of sequences (i.e. only target sequences):
 
 ```bash
 colabfold_batch ./example_output/unique_msa ./example_output/unique_msa/msa --msa-only

@@ -45,9 +45,9 @@ def parse_args():
     p.add_argument("--run-csv", required=True, help="CSV with a 'binder_id' column; will be overwritten with appended metrics")
 
     # Any subset is allowed; if none given, error
-    p.add_argument("--boltz-dir", help="Path to BOLTZ1 outputs directory (expects .../boltz_results_fasta_folder)")
-    p.add_argument("--af3-dir", help="Path to AF3 outputs directory (expects .../outputs)")
-    p.add_argument("--colab-dir", help="Path to ColabFold root (expects .../ptm_output)")
+    p.add_argument("--boltz-dir", help="Path to BOLTZ1 outputs directory (expects .../predictions)")
+    p.add_argument("--af3-dir", help="Path to AF3 outputs directory")
+    p.add_argument("--colab-dir", help="Path to ColabFold outputs")
 
     # Optional explicit source list; otherwise inferred from dirs provided
     p.add_argument("--sources", nargs="+", choices=["boltz","af3","colab"], help="Which sources to scan (defaults to dirs provided)")
@@ -60,8 +60,6 @@ def parse_args():
     p.add_argument("--backup", action="store_true", help="Write run.csv.bak before overwrite")
     p.add_argument("--verbose", action="store_true", help="Print more info while processing")
     p.add_argument("--out-csv", required=True, help="Path to write the calculated metrics CSV")
-    p.add_argument("--specific-chainpair-ipsae", type=str, default=None, help="Comma-separated chain pairs (e.g. 'A:B,B:C') to extract specific ipSAE values")
-    p.add_argument("--confidence-threshold", type=str, default="0.6", help="Comma separated confidence thresholds for min/max PAE calculation (default: 0.6)")
 
     return p.parse_args()
 
@@ -74,7 +72,7 @@ def build_file_index(boltz_dir: Optional[str], af3_dir: Optional[str], colab_dir
 
     if boltz_dir:
         boltz_root = boltz_dir
-        boltz_pattern = os.path.join(boltz_root, 'boltz_results_input_folder', 'predictions', '**', '*')
+        boltz_pattern = os.path.join(boltz_root, 'predictions', '**', '*')
         for path in glob.glob(boltz_pattern, recursive=True):
             base = os.path.basename(path)
             if base.endswith('_model_0.cif'):
@@ -85,7 +83,7 @@ def build_file_index(boltz_dir: Optional[str], af3_dir: Optional[str], colab_dir
                 index['boltz'].setdefault(bid, {})['confidence'] = path
 
     if af3_dir:
-        af3_pattern = os.path.join(af3_dir, 'outputs', '**', '*')
+        af3_pattern = os.path.join(af3_dir, '**', '*')
         for path in glob.glob(af3_pattern, recursive=True):
             base = os.path.basename(path)
             if base.endswith('_confidences.json'):
@@ -96,7 +94,7 @@ def build_file_index(boltz_dir: Optional[str], af3_dir: Optional[str], colab_dir
                 index['af3'].setdefault(bid, {})['structure'] = path
 
     if colab_dir:
-        colab_pattern = os.path.join(colab_dir, 'ptm_output', '*')
+        colab_pattern = os.path.join(colab_dir, '*')
         for path in glob.glob(colab_pattern):
             base = os.path.basename(path)
             if '_scores_rank_001' in base and base.endswith('.json'):
@@ -207,18 +205,17 @@ def get_ipsae_min_max(path, target_chain='A'):
         if target_chain not in (c1, c2):
             continue
         partner = c2 if c1 == target_chain else c1
-        entry = data.setdefault(partner, {
-            'ipSAE': [], 'ipSAE_avg': [], 'LIS': [], 'ipSAE_min': [],
-            'ipSAE_d0chn': [], 'ipSAE_d0dom': [], 'ipae': []
-        })
-        ipae_val = float(parts[idx['ipae']])
-        entry['ipae'].append(ipae_val)
         try:
             d1 = float(parts[idx['dist1']]); d2 = float(parts[idx['dist2']])
         except ValueError:
             continue
         if d1 == 0 or d2 == 0:
             continue
+        
+        entry = data.setdefault(partner, {
+            'ipSAE': [], 'ipSAE_avg': [], 'LIS': [], 'ipSAE_min': [],
+            'ipSAE_d0chn': [], 'ipSAE_d0dom': [], 'ipae': []
+        })
         try:
             entry['ipSAE'].append(float(parts[idx['ipSAE']]))
             entry['ipSAE_avg'].append(float(parts[idx['ipSAE_avg']]))
@@ -226,8 +223,9 @@ def get_ipsae_min_max(path, target_chain='A'):
             entry['ipSAE_min'].append(float(parts[idx['ipSAE_min']]))
             entry['ipSAE_d0chn'].append(float(parts[idx['ipSAE_d0chn']]))
             entry['ipSAE_d0dom'].append(float(parts[idx['ipSAE_d0dom']]))
+            entry['ipae'].append(float(parts[idx['ipae']]))
         except ValueError:
-            continue
+            pass
     if not data:
         return (0.0,) * 8
     mins, maxs, means_avg, means_lis, means_min = [], [], [], [], []
@@ -251,71 +249,6 @@ def get_ipsae_min_max(path, target_chain='A'):
     avg_ipae = sum(ipae_list) / len(ipae_list)
     return avg_min, avg_max, avg_ipSAE_avg, avg_LIS, avg_ipsae_min, avg_ipSAE_d0chn, avg_ipSAE_d0dom, avg_ipae
 
-def get_chainpair_ipsae(path: str, specific_chainpair_ipsae: str):
-    """
-    Extract ipSAE values for specific chain pairs.
-    
-    Args:
-        path: Path to the .txt file.
-        specific_chainpair_ipsae: Comma-separated chain pairs, e.g. "A:B,B:C".
-    
-    Returns:
-        Dict with keys chn_X_Y_ipSAE_min and chn_X_Y_ipSAE_max.
-    """
-    # --- validate input ---
-    pairs = [p.strip() for p in specific_chainpair_ipsae.split(",") if p.strip()]
-    clean_pairs = set()
-    for p in pairs:
-        if ":" not in p:
-            raise ValueError(f"Invalid chainpair format '{p}', must be like 'A:B'")
-        c1, c2 = p.split(":")
-        if not (len(c1) == 1 and len(c2) == 1 and c1.isalpha() and c2.isalpha()):
-            raise ValueError(f"Invalid chain names in pair '{p}'")
-        if c1 == c2:
-            raise ValueError(f"Chain pair cannot be identical: '{p}'")
-        # store as sorted tuple to remove duplicates regardless of order
-        clean_pairs.add(tuple(sorted((c1.upper(), c2.upper()))))
-    
-    # --- read file ---
-    with open(path) as f:
-        lines = [l.strip() for l in f if l.strip() and not l.startswith("#")]
-    if not lines:
-        return {}
-    header = lines[0].split()
-    if "Chn1" not in header or "Chn2" not in header or "ipSAE" not in header:
-        raise ValueError(f"Missing required columns in {path}")
-    idx_c1 = header.index("Chn1")
-    idx_c2 = header.index("Chn2")
-    idx_ipsae = header.index("ipSAE")
-    
-    # build lookup for all ipSAE values
-    table = {}
-    for ln in lines[1:]:
-        parts = ln.split()
-        c1, c2 = parts[idx_c1], parts[idx_c2]
-        try:
-            ipsae_val = float(parts[idx_ipsae])
-        except ValueError:
-            continue
-        table.setdefault((c1, c2), []).append(ipsae_val)
-    
-    # --- extract requested pairs ---
-    result = {}
-    for c1, c2 in clean_pairs:
-        vals = []
-        if (c1, c2) in table:
-            vals.extend(table[(c1, c2)])
-        if (c2, c1) in table:
-            vals.extend(table[(c2, c1)])
-        
-        if vals:
-            result[f"chn_{c1}_{c2}_ipSAE_min"] = min(vals)
-            result[f"chn_{c1}_{c2}_ipSAE_max"] = max(vals)
-        else:
-            result[f"chn_{c1}_{c2}_ipSAE_min"] = None
-            result[f"chn_{c1}_{c2}_ipSAE_max"] = None
-    
-    return result
 
 def get_pDockQ_min_max(path, target_chain='A'):
     with open(path) as f:
@@ -359,7 +292,7 @@ def get_pDockQ_min_max(path, target_chain='A'):
     return {"pDockQ":  [avg_min_p1, avg_max_p1], "pDockQ2": [avg_min_p2, avg_max_p2]}
 
 
-def min_max_pae_for_chain_contacts(json_path, threshold: float, target_chain='A'):
+def min_max_pae_for_chain_contacts(json_path, threshold, target_chain='A'):
     with open(json_path) as f:
         data = json.load(f)
     chain_ids = data['token_chain_ids']
@@ -384,45 +317,30 @@ def find_ipsae_txts(struct_path, bid):
 # -------------------------
 # Processing one binder (sequential)
 # -------------------------
-def process_binder(
-    bid: str,
-    index,
-    pae_cutoff: float,
-    dist_cutoff: float,
-    ipsae_script: str,
-    overwrite: bool,
-    verbose: bool,
-    specific_chainpair_ipsae: str = None,
-    confidence_threshold: str = "0.6"
-):
+
+def process_binder(bid: str, index, pae_cutoff: float, dist_cutoff: float, ipsae_script: str, overwrite: bool, verbose: bool):
     results: Dict[str, float] = {}
     notes: List[str] = []
     valid, miss = locate_files(bid, index)
     notes.extend(miss)
-
     for _, src, struct, conf in valid:
         if verbose:
             print(f"  [{src}] struct={struct}")
             print(f"  [{src}] conf  ={conf}")
-
         try:
             calculate_ipsae(conf, struct, pae_cutoff, dist_cutoff, ipsae_script, overwrite, verbose)
         except subprocess.CalledProcessError as e:
             notes.append(f"[{bid}-{src}] IPSAE failed: {e}")
             continue
-
         txts = find_ipsae_txts(struct, bid)
         if not txts:
             notes.append(f"[{bid}-{src}] No .txt found for {struct}")
             continue
         txt = txts[0]
-
-        # --- existing ipSAE summary ---
         mn, mx, avg_ipsae_avg, avg_LIS, avg_min_ipsae, avg_ipSAE_d0chn, avg_ipSAE_d0dom, avg_ipae = get_ipsae_min_max(txt)
         pqq = get_pDockQ_min_max(txt)
         pdockQ_mn, pdockQ_mx = pqq["pDockQ"][0], pqq["pDockQ"][1]
         pdockQ2_mn, pdockQ2_mx = pqq["pDockQ2"][0], pqq["pDockQ2"][1]
-
         prefix = 'boltz1' if src == 'boltz' else src
         results[f"{prefix}_pDockQ_min"] = pdockQ_mn
         results[f"{prefix}_pDockQ_max"] = pdockQ_mx
@@ -436,26 +354,11 @@ def process_binder(
         results[f"{prefix}_ipSAE_d0chn"] = avg_ipSAE_d0chn
         results[f"{prefix}_ipSAE_d0dom"] = avg_ipSAE_d0dom
         results[f"{prefix}_ipae"] = avg_ipae
-
-        # --- NEW: specific chainpair ipSAE extraction ---
-        if specific_chainpair_ipsae:
-            try:
-                pair_results = get_chainpair_ipsae(txt, specific_chainpair_ipsae)
-                for k, v in pair_results.items():
-                    results[f"{prefix}_{k}"] = v
-            except Exception as e:
-                notes.append(f"[{bid}-{src}] chainpair extraction failed: {e}")
-
         if src == 'af3':
-            thresholds = [float(x) for x in args.confidence_threshold.split(",")]
-            # print(f"Confidence thresholds for min/max PAE calculation: {thresholds}")
-            for thres in thresholds:
-                # print(thres, type(thres))
-                rmin, rmax, count = min_max_pae_for_chain_contacts(conf, thres)
-                results[f"{prefix}_min_pae_contact_thres_{str(thres)}"] = rmin
-                results[f"{prefix}_max_pae_contact_thres_{str(thres)}"] = rmax
-                results[f"{prefix}_res_above_contact_thres_{str(thres)}"] = count
-
+            rmin, rmax, count = min_max_pae_for_chain_contacts(conf, 0.60)
+            results[f"{prefix}_min_pae_contact"] = rmin
+            results[f"{prefix}_max_pae_contact"] = rmax
+            results[f"{prefix}_res_above_contact_thres"] = count
     return results, notes
 
 # -------------------------
@@ -483,6 +386,7 @@ def main():
         raise SystemExit("Provide at least one of --boltz1-dir/--af3-dir/--colab-dir or specify --sources")
 
     index = build_file_index(args.boltz_dir, args.af3_dir, args.colab_dir)
+    
 
     # backup
     if args.backup:
@@ -499,7 +403,7 @@ def main():
 
     tasks = []
     for bid in binder_ids:
-        tasks.append((bid, index, args.pae_cutoff, args.dist_cutoff, args.ipsae_script_path, args.overwrite_ipsae, args.verbose,args.specific_chainpair_ipsae, args.confidence_threshold))
+        tasks.append((bid, index, args.pae_cutoff, args.dist_cutoff, args.ipsae_script_path, args.overwrite_ipsae, args.verbose))
 
     with ProcessPoolExecutor(max_workers=args.max_workers) as pool:
         futures = {pool.submit(process_binder, *t): t[0] for t in tasks}
@@ -508,9 +412,8 @@ def main():
             try:
                 res, notes = fut.result()
             except Exception as e:
+                all_notes.append(f"[{bid}] worker failed: {e}")
                 res = {}
-                notes = []
-                notes.append(f"[{bid}] worker failed: {e}")
             collected[bid] = res
             all_notes.extend(notes)
 

@@ -1,19 +1,19 @@
 Running 3 structures...
 
 Relaxing input PDBs and computing Rosetta metrics
-Structures relaxed in 188 seconds
+Structures relaxed in 26 seconds
 
 Running AF2 initial guess
-AF2 initial guess completed in 254 seconds
+AF2 initial guess completed in 260 seconds
 
 Running ColabFold
-ColabFold completed in 338 seconds
+ColabFold completed in 6 seconds
 
 Running Boltz
-Boltz completed in 440 seconds
+Boltz completed in 12 seconds
 
 Running AF3
-AF3 completed in 274 seconds
+AF3 completed in 269 seconds
 
 Extracting confidence metrics
 
@@ -22,10 +22,10 @@ Computing ipSAE and other interface confidence metrics
 Computing dockQ
 
 Relaxing model PDBs and computing Rosetta metrics
-Structures relaxed in 715 seconds
+Structures relaxed in 93 seconds
 
 Computing RMSDs
-Pymol metrics calculated in 13 seconds
+Pymol metrics calculated in 16 seconds
 
-Overall pipeline execution time: 2269 seconds
-756.33 seconds per design
+Overall pipeline execution time: 809 seconds
+269.66 seconds per design

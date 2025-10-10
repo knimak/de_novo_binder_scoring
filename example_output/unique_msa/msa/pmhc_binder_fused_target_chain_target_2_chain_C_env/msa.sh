@@ -9,9 +9,10 @@ USE_ENV="$8"
 USE_TEMPLATES="$9"
 FILTER="${10}"
 TAXONOMY="${11}"
-M8OUT="${12}"
-GPU="${13}"
-GPUSERVER="${14}"
+TAXONOMYREPORT="${12}"
+M8OUT="${13}"
+GPU="${14}"
+GPUSERVER="${15}"
 EXPAND_EVAL=inf
 ALIGN_EVAL=10
 DIFF=3000
@@ -69,6 +70,13 @@ if [ "${TAXONOMY}" = "1" ] && [ -e "${DB1}_taxonomy" ]; then
   awk 'BEGIN { printf("%c%c%c%c",8,0,0,0); exit; }' > "${BASE}/res_exp_realign_tax.dbtype"
   MMSEQS_FORCE_MERGE=1 "${MMSEQS}" filtertaxdb "${DB1}" "${BASE}/res_exp_realign_tax" "${BASE}/res_exp_realign_tax_filt" --taxon-list '!12908&&!28384'
   tr -d '\000' < "${BASE}/res_exp_realign_tax_filt" | sort -u > "${BASE}/uniref_tax.tsv"
+  "${MMSEQS}" rmdb "${BASE}/res_exp_realign_tax_filt"
+  "${MMSEQS}" rmdb "${BASE}/res_exp_realign_tax"
+fi
+if [ "${TAXONOMYREPORT}" = "1" ] && [ -e "${DB1}_taxonomy" ]; then
+  "${MMSEQS}" taxonomyreport "${DB1}.idx" "${BASE}/res_exp_realign_filter" "${BASE}/res_exp_realign_taxreport" --report-mode 3
+  "${MMSEQS}" createtsv "${BASE}/qdb" "${BASE}/res_exp_realign_taxreport" "${BASE}/uniref_taxreport.tsv"
+  "${MMSEQS}" rmdb "${BASE}/res_exp_realign_taxreport"
 fi
 "${MMSEQS}" rmdb "${BASE}/res_exp_realign_filter"
 
@@ -77,7 +85,7 @@ fi
 
 if [ "${USE_TEMPLATES}" = "1" ]; then
   if [ -n "${ORIG_CUDA_VISIBLE_DEVICES}" ]; then
-    export CUDA_VISIBLE_DEVICES="${ORIG_CUDA_VISIBLE_DEVICES}"a
+    export CUDA_VISIBLE_DEVICES="${ORIG_CUDA_VISIBLE_DEVICES}"
   fi
   if [ -n "${PDB_CUDA_VISIBLE_DEVICES}" ]; then
     export CUDA_VISIBLE_DEVICES="${PDB_CUDA_VISIBLE_DEVICES}"
@@ -92,7 +100,7 @@ fi
 
 if [ "${USE_ENV}" = "1" ]; then
   if [ -n "${ORIG_CUDA_VISIBLE_DEVICES}" ]; then
-    export CUDA_VISIBLE_DEVICES="${ORIG_CUDA_VISIBLE_DEVICES}"a
+    export CUDA_VISIBLE_DEVICES="${ORIG_CUDA_VISIBLE_DEVICES}"
   fi
   if [ -n "${ENV_CUDA_VISIBLE_DEVICES}" ]; then
     export CUDA_VISIBLE_DEVICES="${ENV_CUDA_VISIBLE_DEVICES}"
