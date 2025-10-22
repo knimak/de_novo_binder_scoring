@@ -933,7 +933,7 @@ for chain1 in unique_chains:
         if chain1 >= chain2: continue
         chainpairs.add(chain1 + "-" + chain2)
 
-OUT.write("\nChn1 Chn2  PAE Dist  Type   ipSAE    ipSAE_avg    ipSAE_min    ipSAE_d0chn ipSAE_d0dom  ipTM_af  ipTM_d0chn     pDockQ     pDockQ2    LIS   ipae    n0res  n0chn  n0dom   d0res   d0chn   d0dom  nres1   nres2   dist1   dist2  Model\n")
+OUT.write("\nChn1 Chn2  PAE Dist  Type   ipSAE    ipSAE_avg    ipSAE_min_in_calculation    ipSAE_d0chn ipSAE_d0dom  ipTM_af  ipTM_d0chn     pDockQ     pDockQ2    LIS   ipae    n0res  n0chn  n0dom   d0res   d0chn   d0dom  nres1   nres2   dist1   dist2  Model\n")
 PML.write("# Chn1 Chn2  PAE Dist  Type   ipSAE    ipSAE_d0chn ipSAE_d0dom  ipTM_af  ipTM_d0chn     pDockQ     pDockQ2    LIS      n0res  n0chn  n0dom   d0res   d0chn   d0dom  nres1   nres2   dist1   dist2  Model\n")
 for pair in sorted(chainpairs):
     (chain_a, chain_b) = pair.split("-")
