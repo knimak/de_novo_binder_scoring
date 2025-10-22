@@ -181,8 +181,18 @@ def calculate_ipsae(conf: str, struct: str, pae_cutoff: float, dist_cutoff: floa
     subprocess.run(cmd, check=True)
 
 
-def get_ipsae_min_max(path, target_chain='A'):
-    # (unaltered from your version)
+def get_ipsae_min_max(path: str, target_chain: str = 'A'):
+    """
+    Parse an ipsae_w_ipae.py TXT and aggregate metrics for the target_chain.
+
+    Rules:
+    - ipSAE_max: use Type==max rows. For each partner chain, take the maximum
+      ipSAE value (after excluding zero-distance pairs), then average across partners.
+    - ipSAE_min: use Type==asym rows. For each partner chain, take the lower of the
+      asymmetric ipSAE values (after excluding zero-distance pairs), then average across partners.
+    - Exclude zero-distance pairs (dist1==0 or dist2==0) for ipSAE-family, pDockQ, LIS.
+    - Compute ipae from Type==max rows WITHOUT distance gating so it remains cutoff-independent.
+    """
     if target_chain != 'A':
         raise ValueError("This function only supports target_chain='A'")
     with open(path) as f:
@@ -191,63 +201,103 @@ def get_ipsae_min_max(path, target_chain='A'):
         return (None,) * 8
     header = lines[0].split()
     required_cols = (
-        'Chn1', 'Chn2', 'ipSAE', 'ipSAE_avg', 'ipSAE_min',
+        'Chn1', 'Chn2', 'Type', 'ipSAE', 'ipSAE_avg', 'ipSAE_min_in_calculation',
         'LIS', 'ipSAE_d0chn', 'ipSAE_d0dom', 'dist1', 'dist2', 'ipae'
     )
     if not all(col in header for col in required_cols):
         missing = [col for col in required_cols if col not in header]
         raise ValueError(f"Missing columns in header: {missing} for file {path}")
     idx = {col: header.index(col) for col in required_cols}
-    data = {}
+
+    # Accumulate ipSAE-family metrics
+    # - data_max: from Type==max rows (non-zero distance)
+    # - data_asym: from Type==asym rows (non-zero distance)
+    data_max: Dict[str, Dict[str, List[float]]] = {}
+    data_asym: Dict[str, List[float]] = {}
+    # Accumulate ipae from Type==max rows, regardless of dist1/dist2
+    ipae_by_partner: Dict[str, List[float]] = {}
+
     for ln in lines[1:]:
         parts = ln.split()
         c1, c2 = parts[idx['Chn1']], parts[idx['Chn2']]
         if target_chain not in (c1, c2):
             continue
+        t = parts[idx['Type']].lower()
         partner = c2 if c1 == target_chain else c1
+
+        # ipae: collect from Type==max rows regardless of distance counts
+        if t == 'max':
+            try:
+                ipae_val = float(parts[idx['ipae']])
+                ipae_by_partner.setdefault(partner, []).append(ipae_val)
+            except ValueError:
+                pass
+
+        # ipSAE-family (and LIS): exclude zero-distance pairs
         try:
             d1 = float(parts[idx['dist1']]); d2 = float(parts[idx['dist2']])
         except ValueError:
             continue
-        if d1 == 0 or d2 == 0:
+        if d1 == 0.0 or d2 == 0.0:
             continue
-        
-        entry = data.setdefault(partner, {
-            'ipSAE': [], 'ipSAE_avg': [], 'LIS': [], 'ipSAE_min': [],
-            'ipSAE_d0chn': [], 'ipSAE_d0dom': [], 'ipae': []
-        })
-        try:
-            entry['ipSAE'].append(float(parts[idx['ipSAE']]))
-            entry['ipSAE_avg'].append(float(parts[idx['ipSAE_avg']]))
-            entry['LIS'].append(float(parts[idx['LIS']]))
-            entry['ipSAE_min'].append(float(parts[idx['ipSAE_min']]))
-            entry['ipSAE_d0chn'].append(float(parts[idx['ipSAE_d0chn']]))
-            entry['ipSAE_d0dom'].append(float(parts[idx['ipSAE_d0dom']]))
-            entry['ipae'].append(float(parts[idx['ipae']]))
-        except ValueError:
-            pass
-    if not data:
-        return (0.0,) * 8
-    mins, maxs, means_avg, means_lis, means_min = [], [], [], [], []
-    ipSAE_d0chn_list, ipSAE_d0dom_list, ipae_list = [], [], []
-    for vals in data.values():
-        mins.append(min(vals['ipSAE']) if vals['ipSAE'] else 0.0)
-        maxs.append(max(vals['ipSAE']) if vals['ipSAE'] else 0.0)
-        means_avg.append(min(vals['ipSAE_avg']) if vals['ipSAE_avg'] else 0.0)
-        means_lis.append(min(vals['LIS']) if vals['LIS'] else 0.0)
-        means_min.append(min(vals['ipSAE_min']) if vals['ipSAE_min'] else 0.0)
-        ipSAE_d0chn_list.append(min(vals['ipSAE_d0chn']) if vals['ipSAE_d0chn'] else 0.0)
-        ipSAE_d0dom_list.append(min(vals['ipSAE_d0dom']) if vals['ipSAE_d0dom'] else 0.0)
-        ipae_list.append(min(vals['ipae']) if vals['ipae'] else 0.0)
-    avg_min = sum(mins) / len(mins)
-    avg_max = sum(maxs) / len(maxs)
-    avg_ipSAE_avg = sum(means_avg) / len(means_avg)
-    avg_LIS = sum(means_lis) / len(means_lis)
-    avg_ipsae_min = sum(means_min) / len(means_min)
-    avg_ipSAE_d0chn = sum(ipSAE_d0chn_list) / len(ipSAE_d0chn_list)
-    avg_ipSAE_d0dom = sum(ipSAE_d0dom_list) / len(ipSAE_d0dom_list)
-    avg_ipae = sum(ipae_list) / len(ipae_list)
-    return avg_min, avg_max, avg_ipSAE_avg, avg_LIS, avg_ipsae_min, avg_ipSAE_d0chn, avg_ipSAE_d0dom, avg_ipae
+
+        if t == 'max':
+            bucket = data_max.setdefault(partner, {
+                'ipSAE': [], 'ipSAE_avg': [], 'LIS': [], 'ipSAE_min_in_calculation': [],
+                'ipSAE_d0chn': [], 'ipSAE_d0dom': []
+            })
+            try:
+                bucket['ipSAE'].append(float(parts[idx['ipSAE']]))
+                bucket['ipSAE_avg'].append(float(parts[idx['ipSAE_avg']]))
+                bucket['LIS'].append(float(parts[idx['LIS']]))
+                bucket['ipSAE_min_in_calculation'].append(float(parts[idx['ipSAE_min_in_calculation']]))
+                bucket['ipSAE_d0chn'].append(float(parts[idx['ipSAE_d0chn']]))
+                bucket['ipSAE_d0dom'].append(float(parts[idx['ipSAE_d0dom']]))
+            except ValueError:
+                continue
+        elif t == 'asym':
+            try:
+                val = float(parts[idx['ipSAE']])
+            except ValueError:
+                continue
+            data_asym.setdefault(partner, []).append(val)
+
+    # Aggregate ipSAE-family metrics
+    # ipSAE_min from Type==asym (lower/asymmetric per partner), averaged across partners
+    if not data_asym:
+        avg_min = 0.0
+    else:
+        per_partner_min = [min(vs) if vs else 0.0 for vs in data_asym.values()]
+        avg_min = sum(per_partner_min) / len(per_partner_min)
+
+    # ipSAE_max and other metrics from Type==max rows
+    if not data_max:
+        avg_max = avg_ipsae_avg = avg_lis = avg_ipsae_min = avg_d0chn = avg_d0dom = 0.0
+    else:
+        maxs, means_avg, means_lis, means_min = [], [], [], []
+        d0chn_list, d0dom_list = [], []
+        for vals in data_max.values():
+            maxs.append(max(vals['ipSAE']) if vals['ipSAE'] else 0.0)
+            means_avg.append(min(vals['ipSAE_avg']) if vals['ipSAE_avg'] else 0.0)
+            means_lis.append(min(vals['LIS']) if vals['LIS'] else 0.0)
+            means_min.append(min(vals['ipSAE_min_in_calculation']) if vals['ipSAE_min_in_calculation'] else 0.0)
+            d0chn_list.append(min(vals['ipSAE_d0chn']) if vals['ipSAE_d0chn'] else 0.0)
+            d0dom_list.append(min(vals['ipSAE_d0dom']) if vals['ipSAE_d0dom'] else 0.0)
+        avg_max = sum(maxs) / len(maxs)
+        avg_ipsae_avg = sum(means_avg) / len(means_avg)
+        avg_lis = sum(means_lis) / len(means_lis)
+        avg_ipsae_min = sum(means_min) / len(means_min)
+        avg_d0chn = sum(d0chn_list) / len(d0chn_list)
+        avg_d0dom = sum(d0dom_list) / len(d0dom_list)
+
+    # Aggregate ipae separately, independent of distance gating
+    if not ipae_by_partner:
+        avg_ipae = 0.0
+    else:
+        ipae_vals = [min(vs) if vs else 0.0 for vs in ipae_by_partner.values()]
+        avg_ipae = sum(ipae_vals) / len(ipae_vals)
+
+    return avg_min, avg_max, avg_ipsae_avg, avg_lis, avg_ipsae_min, avg_d0chn, avg_d0dom, avg_ipae
 
 
 def get_pDockQ_min_max(path, target_chain='A'):
@@ -414,6 +464,7 @@ def main():
             except Exception as e:
                 all_notes.append(f"[{bid}] worker failed: {e}")
                 res = {}
+                notes = []  # <-- ensure defined
             collected[bid] = res
             all_notes.extend(notes)
 

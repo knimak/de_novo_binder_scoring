@@ -1,7 +1,4 @@
 SCORE:     binder_aligned_rmsd pae_binder pae_interaction pae_target plddt_binder plddt_target plddt_total target_aligned_rmsd time description
-SCORE:        0.707    2.817    6.354    3.373   93.067   97.307   96.153    1.120  116.277        pmhc_binder_multi_target_chain_relaxed_af2pred
-SCORE:        0.691    2.988    7.043    3.420   91.907   96.981   95.600    1.490   29.952        pmhc_binder_fused_target_chain_relaxed_af2pred
-SCORE:        0.547    2.323    3.839    2.529   95.142   96.220   95.735    1.442   93.057        pdl1_binder_relaxed_af2pred
-SCORE:        0.707    2.817    6.354    3.373   93.067   97.307   96.153    1.120  116.706        pmhc_binder_multi_target_chain_relaxed_af2pred
-SCORE:        0.691    2.988    7.043    3.420   91.907   96.981   95.600    1.490   29.816        pmhc_binder_fused_target_chain_relaxed_af2pred
-SCORE:        0.547    2.323    3.839    2.529   95.142   96.220   95.735    1.442   92.684        pdl1_binder_relaxed_af2pred
+SCORE:        0.609    2.939    6.547    3.385   92.573   97.215   95.951    1.033  116.103        pmhc_binder_multi_target_chain_relaxed_af2pred
+SCORE:        0.728    2.958    6.850    3.422   92.225   97.029   95.722    1.487   29.760        pmhc_binder_fused_target_chain_relaxed_af2pred
+SCORE:        0.606    2.324    3.842    2.512   95.144   96.221   95.737    1.591   92.293        pdl1_binder_relaxed_af2pred

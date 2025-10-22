@@ -312,7 +312,7 @@ _ma_data.name         Model
 #
 _ma_model_list.data_id          1
 _ma_model_list.model_group_id   1
-_ma_model_list.model_group_name "AlphaFold-beta-20231127 (3.0.1 @ 2025-10-09 18:44:46)"
+_ma_model_list.model_group_name "AlphaFold-beta-20231127 (3.0.1 @ 2025-10-22 12:55:55)"
 _ma_model_list.model_id         1
 _ma_model_list.model_name       "Top ranked model"
 _ma_model_list.model_type       "Ab initio model"
@@ -823,7 +823,7 @@ _software.description    "Structure prediction"
 _software.name           AlphaFold
 _software.pdbx_ordinal   1
 _software.type           package
-_software.version        "AlphaFold-beta-20231127 (fcc695859904bf97bb0c56f3ba35f6390f43873ea3fcf5ee1f13e7d058b9b6e9)"
+_software.version        "AlphaFold-beta-20231127 (018cf23ba8511d083ed337ffe20961ab36c0d208329ec24e85de5c77ebed9622)"
 #
 loop_
 _struct_asym.entity_id
