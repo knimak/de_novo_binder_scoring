@@ -1,28 +1,10 @@
-# ipsae.py
-# script for calculating the ipSAE score for scoring pairwise protein-protein interactions in AlphaFold2 and AlphaFold3 models
-# https://www.biorxiv.org/content/10.1101/2025.02.10.637595v1
-
-# Also calculates:
-#    pDockQ: Bryant, Pozotti, and Eloffson. https://www.nature.com/articles/s41467-022-28865-w
-#    pDockQ2: Zhu, Shenoy, Kundrotas, Elofsson. https://academic.oup.com/bioinformatics/article/39/7/btad424/7219714
-#    LIS: Kim, Hu, Comjean, Rodiger, Mohr, Perrimon. https://www.biorxiv.org/content/10.1101/2024.02.19.580970v1
-
-# Roland Dunbrack
-# Fox Chase Cancer Center
-# version 3
-# April 6, 2025
-# MIT license: script can be modified and redistributed for non-commercial and commercial use, as long as this information is reproduced.
-
-# includes support for Boltz1 structures and structures with nucleic acids
-
 # It may be necessary to install numpy with the following command:
 #      pip install numpy
 
 # Usage:
 
-#  python ipsae.py <path_to_af2_pae_file>     <path_to_af2_pdb_file>     <pae_cutoff> <dist_cutoff>
-#  python ipsae.py <path_to_af3_pae_file>     <path_to_af3_cif_file>     <pae_cutoff> <dist_cutoff>
-#  python ipsae.py <path_to_boltz1_pae_file>  <path_to_boltz1_cif_file>  <pae_cutoff> <dist_cutoff>
+
+#  python ipsae.py <path_to_boltz1_pae_file.npz>  <path_to_boltz1_cif_file.pdb>  <pae_cutoff> <dist_cutoff>
 #
 # All output files will be in same path/folder as cif or pdb file
 
@@ -36,17 +18,9 @@ np.set_printoptions(threshold=np.inf)  # for printing out full numpy arrays for 
 
 # Ensure correct usage
 if len(sys.argv) < 5:
-    print("Usage for AF2:")
-    print("   python ipsae.py <path_to_pae_json_file> <path_to_pdb_file> <pae_cutoff> <dist_cutoff>")
-    print("   python ipsae.py RAF1_KSR1_scores_rank_001_alphafold2_multimer_v3_model_4_seed_003.json RAF1_KSR1_unrelaxed_rank_001_alphafold2_multimer_v3_model_4_seed_003.pdb 10 10")
-    print("")
-    print("Usage for AF3:")
-    print("   python ipsae.py <path_to_pae_json_file> <path_to_mmcif_file> <pae_cutoff> <dist_cutoff>")
-    print("   python ipsae.py fold_aurka_tpx2_full_data_0.json  fold_aurka_tpx2_model_0.cif 10 10")
-    print("")
     print("Usage for Boltz1:")
-    print("   python ipsae.py <path_to_pae_npz_file> <path_to_mmcif_file> <pae_cutoff> <dist_cutoff>")
-    print("   python ipsae.py pae_AURKA_TPX2_model_0.npz  AURKA_TPX2_model_0.cif 10 10")
+    print("   python ipsae.py <path_to_pae_npz_file> <path_to_pdb_file> <pae_cutoff> <dist_cutoff>")
+    print("   python ipsae.py pae_AURKA_TPX2_model_0.npz  AURKA_TPX2_model_0.pdb 10 10")
     sys.exit(1)
 
 pae_file_path =    sys.argv[1]
@@ -60,27 +34,13 @@ if dist_cutoff<10: dist_string="0"+dist_string
 
 #pae_AURKA_TPX2_model_0.npz
 
-if ".pdb" in pdb_path:
+if ".pdb" in pdb_path and pae_file_path.endswith(".npz"):
     pdb_stem=pdb_path.replace(".pdb","")
     path_stem =     f'{pdb_path.replace(".pdb","")}_{pae_string}_{dist_string}'
-    af2 =    True
-    af3 =    False
-    boltz1 = False
-    cif =    False
-elif ".cif" in pdb_path and pae_file_path.endswith(".json"):
-    pdb_stem=pdb_path.replace(".cif","")
-    path_stem =     f'{pdb_path.replace(".cif","")}_{pae_string}_{dist_string}'
-    af2 =    False
-    af3 =    True
-    boltz1 = False
-    cif =    True
-elif ".cif" in pdb_path and pae_file_path.endswith(".npz"):
-    pdb_stem=pdb_path.replace(".cif","")
-    path_stem =     f'{pdb_path.replace(".cif","")}_{pae_string}_{dist_string}'
     af2 =    False
     af3 =    False
     boltz1 = True
-    cif =    True
+    cif =    False
 else:
     print("Wrong PDB or PAE file type ", pdb_path)
     sys.exit()
@@ -120,7 +80,7 @@ def calc_d0_array(L,pair_type):
     return np.maximum(min_value, 1.24 * (L - 15) ** (1.0/3.0) - 1.8)
 
 
-# Define the parse_atom_line function for PDB lines (by column) and mmCIF lines (split by white_space)
+# Define the parse_atom_line function for PDB lines (by column) 
 # parsed_line = parse_atom_line(line)
 # line = "ATOM    123  CA  ALA A  15     11.111  22.222  33.333  1.00 20.00           C"
 def parse_pdb_atom_line(line):
@@ -132,97 +92,6 @@ def parse_pdb_atom_line(line):
     x = line[30:38].strip()
     y = line[38:46].strip()
     z = line[46:54].strip()
-
-    # Convert string numbers to integers or floats as appropriate
-    atom_num = int(atom_num)
-    residue_seq_num = int(residue_seq_num)
-    x = float(x)
-    y = float(y)
-    z = float(z)
-
-    return {
-        'atom_num': atom_num,
-        'atom_name': atom_name,
-        'residue_name': residue_name,
-        'chain_id': chain_id,
-        'residue_seq_num': residue_seq_num,
-        'x': x,
-        'y': y,
-        'z': z
-    }
-
-def parse_cif_atom_line(line,fielddict):
-    # for parsing AF3 and Boltz1 mmCIF files
-    # ligands do not have residue numbers but modified residues do. Return "None" for ligand.
-    # AF3 mmcif lines
-    # 0      1   2   3     4  5  6 7  8  9  10      11     12      13   14    15 16 17
-    #ATOM   1294 N   N     . ARG A 1 159 ? 5.141   -14.096 10.526  1.00 95.62 159 A 1
-    #ATOM   1295 C   CA    . ARG A 1 159 ? 4.186   -13.376 11.366  1.00 96.27 159 A 1
-    #ATOM   1296 C   C     . ARG A 1 159 ? 2.976   -14.235 11.697  1.00 96.42 159 A 1
-    #ATOM   1297 O   O     . ARG A 1 159 ? 2.654   -15.174 10.969  1.00 95.46 159 A 1
-    # ...
-    #HETATM 1305 N   N     . TPO A 1 160 ? 2.328   -13.853 12.742  1.00 96.42 160 A 1
-    #HETATM 1306 C   CA    . TPO A 1 160 ? 1.081   -14.560 13.218  1.00 96.78 160 A 1
-    #HETATM 1307 C   C     . TPO A 1 160 ? -2.115  -11.668 12.263  1.00 96.19 160 A 1
-    #HETATM 1308 O   O     . TPO A 1 160 ? -1.790  -11.556 11.113  1.00 95.75 160 A 1
-    # ...
-    #HETATM 2608 P   PG    . ATP C 3 .   ? -6.858  4.182   10.275  1.00 84.94 1   C 1 
-    #HETATM 2609 O   O1G   . ATP C 3 .   ? -6.178  5.238   11.074  1.00 75.56 1   C 1 
-    #HETATM 2610 O   O2G   . ATP C 3 .   ? -5.889  3.166   9.748   1.00 75.15 1   C 1 
-    # ...
-    #HETATM 2639 MG  MG    . MG  D 4 .   ? -7.262  2.709   4.825   1.00 91.47 1   D 1 
-    #HETATM 2640 MG  MG    . MG  E 5 .   ? -4.994  2.251   8.755   1.00 85.96 1   E 1 
-
-
-    # Boltz1 mmcif files (in non-standard order))
-    #_atom_site.group_PDB
-    #_atom_site.id
-    #_atom_site.type_symbol
-    #_atom_site.label_atom_id
-    #_atom_site.label_alt_id
-    #_atom_site.label_comp_id
-    #_atom_site.label_seq_id
-    #_atom_site.auth_seq_id
-    #_atom_site.pdbx_PDB_ins_code
-    #_atom_site.label_asym_id
-    #_atom_site.Cartn_x
-    #_atom_site.Cartn_y
-    #_atom_site.Cartn_z
-    #_atom_site.occupancy
-    #_atom_site.label_entity_id
-    #_atom_site.auth_asym_id
-    #_atom_site.auth_comp_id
-    #_atom_site.B_iso_or_equiv
-    #_atom_site.pdbx_PDB_model_num
-    # 0     1     2  3     4   5   6    7   8  9  10          11         12       13  14 15 16  17 18
-    #ATOM   2652  N  N     . ASN  43   43   ?  B  10.83538   6.06359    18.45139   1  2  B  ASN  1  1
-    #ATOM   2653  C  CA    . ASN  43   43   ?  B  10.76295   5.07366    19.53232   1  2  B  ASN  1  1
-    #ATOM   2654  C  C     . ASN  43   43   ?  B  11.21770   5.64437    20.88774   1  2  B  ASN  1  1
-    #ATOM   2655  O  O     . ASN  43   43   ?  B  12.06730   6.51688    20.91168   1  2  B  ASN  1  1
-    #ATOM   2656  C  CB    . ASN  43   43   ?  B  11.60137   3.84778    19.19481   1  2  B  ASN  1  1
-    #ATOM   2657  C  CG    . ASN  43   43   ?  B  10.96208   3.03997    18.07013   1  2  B  ASN  1  1
-    #ATOM   2658  O  OD1   . ASN  43   43   ?  B  9.79094    3.17033    17.81165   1  2  B  ASN  1  1
-    #ATOM   2659  N  ND2   . ASN  43   43   ?  B  11.77101   2.23791    17.39764   1  2  B  ASN  1  1
-    #HETATM 2660  P  PG    . ATP  .    1    ?  C  -8.79525   6.04621    -4.99212   1  3  C  ATP  1  1
-    #HETATM 2661  O  O1G   . ATP  .    1    ?  C  -10.01901  6.83468    -5.24825   1  3  C  ATP  1  1
-    #HETATM 2662  O  O2G   . ATP  .    1    ?  C  -9.03047   4.56941    -4.85246   1  3  C  ATP  1  1
-    #HETATM 2663  O  O3G   . ATP  .    1    ?  C  -7.97335   6.60305    -3.86656   1  3  C  ATP  1  1
-    #HETATM 2664  P  PB    . ATP  .    1    ?  C  -6.63618   7.04315    -6.56073   1  3  C  ATP  1  1
-    #HETATM 2665  O  O1B   . ATP  .    1    ?  C  -7.04640   8.36577    -7.14326   1  3  C  ATP  1  1
-    #HETATM 2666  O  O2B   . ATP  .    1    ?  C  -5.79036   7.13926    -5.33995   1  3  C  ATP  1  1
-
-    
-    linelist =        line.split()
-    atom_num =        linelist[ fielddict['id'] ]
-    atom_name =       linelist[ fielddict['label_atom_id'] ]
-    residue_name =    linelist[ fielddict['label_comp_id'] ]
-    chain_id =        linelist[ fielddict['label_asym_id'] ]
-    residue_seq_num = linelist[ fielddict['label_seq_id'] ]
-    x =               linelist[ fielddict['Cartn_x'] ]
-    y =               linelist[ fielddict['Cartn_y'] ]
-    z =               linelist[ fielddict['Cartn_z'] ]
-
-    if residue_seq_num == ".": return None   # ligand atom
 
     # Convert string numbers to integers or floats as appropriate
     atom_num = int(atom_num)
@@ -313,74 +182,70 @@ def classify_chains(chains, residue_types):
 residues = []
 cb_residues = []
 chains = []
-atomsitefield_num=0
-atomsitefield_dict={} # contains order of atom_site fields in mmCIF files; handles any mmCIF field order
+token_mask = []
 
-# For af3 and boltz1: need mask to identify CA atom tokens in plddt vector and pae matrix;
-# Skip ligand atom tokens and non-CA-atom tokens in PTMs (those not in residue_set)
-token_mask=list()     
-residue_set= {"ALA", "ARG", "ASN", "ASP", "CYS",
-              "GLN", "GLU", "GLY", "HIS", "ILE",
-              "LEU", "LYS", "MET", "PHE", "PRO",
-              "SER", "THR", "TRP", "TYR", "VAL",
-              "DA", "DC", "DT", "DG", "A", "C", "U", "G"}
+# Amino acid residue set (for filtering nonstandard residues)
+residue_set = {
+    "ALA", "ARG", "ASN", "ASP", "CYS", "GLN", "GLU", "GLY", "HIS", "ILE",
+    "LEU", "LYS", "MET", "PHE", "PRO", "SER", "THR", "TRP", "TYR", "VAL"
+}
 
-nuc_residue_set = {"DA", "DC", "DT", "DG", "A", "C", "U", "G"}
+with open(pdb_path, 'r') as pdb_file:
+    for line in pdb_file:
+        if not (line.startswith("ATOM") or line.startswith("HETATM")):
+            continue
 
-with open(pdb_path, 'r') as PDB:
-    for line in PDB:
+        atom = parse_pdb_atom_line(line)
+        if atom is None:  # skip ligands or nonstandard atoms
+            token_mask.append(0)
+            continue
 
-        if line.startswith("_atom_site."):
-            line=line.strip()
-            (atomsite,fieldname)=line.split(".")
-            atomsitefield_dict[fieldname]=atomsitefield_num
-            atomsitefield_num += 1
-            
-        if line.startswith("ATOM") or line.startswith("HETATM"):
-            if cif:
-                atom=parse_cif_atom_line(line, atomsitefield_dict)
-            else:
-                atom=parse_pdb_atom_line(line)
-            if atom is None:  # ligand atom
-                token_mask.append(0)
-                continue
+        resname = atom['residue_name']
+        atom_name = atom['atom_name']
+        chain_id = atom['chain_id']
+        resnum = atom['residue_seq_num']
+        coor = np.array([atom['x'], atom['y'], atom['z']])
 
-            if atom['atom_name'] == "CA" or "C1" in atom['atom_name']:
-                token_mask.append(1)
-                residues.append({
-                    'atom_num': atom['atom_num'],
-                    'coor': np.array([atom['x'], atom['y'], atom['z']]),
-                    'res': atom['residue_name'],
-                    'chainid': atom['chain_id'],
-                    'resnum': atom['residue_seq_num'],
-                    'residue': f"{atom['residue_name']:3}   {atom['chain_id']:3} {atom['residue_seq_num']:4}"
-                })
-                chains.append(atom['chain_id'])
+        # Include CA atoms for residue tracking
+        if atom_name == "CA":
+            token_mask.append(1)
+            residues.append({
+                'atom_num': atom['atom_num'],
+                'coor': coor,
+                'res': resname,
+                'chainid': chain_id,
+                'resnum': resnum,
+                'residue': f"{resname:3} {chain_id:3} {resnum:4}"
+            })
+            chains.append(chain_id)
 
-            if atom['atom_name'] == "CB" or "C3" in atom['atom_name'] or (atom['residue_name']=="GLY" and atom['atom_name']=="CA"):
-                cb_residues.append({
-                    'atom_num': atom['atom_num'],
-                    'coor': np.array([atom['x'], atom['y'], atom['z']]),
-                    'res': atom['residue_name'],
-                    'chainid': atom['chain_id'],
-                    'resnum': atom['residue_seq_num'],
-                    'residue': f"{atom['residue_name']:3}   {atom['chain_id']:3} {atom['residue_seq_num']:4}"
-                })
+        # Include CB atoms (or CA for GLY)
+        if atom_name == "CB" or (resname == "GLY" and atom_name == "CA"):
+            cb_residues.append({
+                'atom_num': atom['atom_num'],
+                'coor': coor,
+                'res': resname,
+                'chainid': chain_id,
+                'resnum': resnum,
+                'residue': f"{resname:3} {chain_id:3} {resnum:4}"
+            })
 
-            # add nucleic acids and non-CA atoms in PTM residues to tokens (as 0), whether labeled as "HETATM" (af3) or as "ATOM" (boltz1)
-            if atom['atom_name'] != "CA" and "C1" not in atom['atom_name'] and atom['residue_name'] not in residue_set:
-                token_mask.append(0)
+        # For non-CA atoms in PTM residues, mark as 0
+        if atom_name != "CA" and resname not in residue_set:
+            token_mask.append(0)
 
-# Convert structure information to numpy arrays
+# Convert to numpy arrays
 numres = len(residues)
-CA_atom_num=  np.array([res['atom_num']-1 for res in residues])  # for AF3 atom indexing from 0
-CB_atom_num=  np.array([res['atom_num']-1 for res in cb_residues])  # for AF3 atom indexing from 0
-coordinates = np.array([res['coor']       for res in cb_residues])
+CA_atom_num = np.array([res['atom_num'] - 1 for res in residues])
+CB_atom_num = np.array([res['atom_num'] - 1 for res in cb_residues])
+coordinates = np.array([res['coor'] for res in cb_residues])
 chains = np.array(chains)
 unique_chains = np.unique(chains)
-token_array=np.array(token_mask)
-ntokens=np.sum(token_array)
-residue_types=np.array([res['res'] for res in residues])
+token_array = np.array(token_mask)
+ntokens = np.sum(token_array)
+residue_types = np.array([res['res'] for res in residues])
+
+
 
 # chain types (nucleic acid (NA) or protein) and chain_pair_types ('nucleic_acid' if either chain is NA) for d0 calculation
 # arbitrarily setting d0 to 2.0 for NA/protein or NA/NA chain pairs (approximately 21 base pairs)
@@ -398,38 +263,7 @@ for chain1 in unique_chains:
 # Calculate distance matrix using NumPy broadcasting
 distances = np.sqrt(((coordinates[:, np.newaxis, :] - coordinates[np.newaxis, :, :])**2).sum(axis=2))
 
-# Load AF2, AF3, or BOLTZ1 data and extract plddt and pae_matrix (and ptm_matrix if available)
-if af2:
-    
-
-    if os.path.exists(pae_file_path):
-        if pae_file_path.endswith('.pkl'):
-            data = np.load(pae_file_path, allow_pickle=True)
-        else:
-            with open(pae_file_path, 'r') as file:
-                data = json.load(file)
-                
-        if 'iptm' in data: iptm_af2 =   float(data['iptm'])
-        else: iptm_af2=-1.0
-        if 'ptm' in data: ptm_af2  =   float(data['ptm'])
-        else: ptm_af2=-1.0
-    
-        if 'plddt' in data:
-            plddt =      np.array(data['plddt'])
-            cb_plddt =   np.array(data['plddt'])  # for pDockQ
-        else:
-            plddt = np.zeros(numres)
-            cb_plddt = np.zeros(numres)
-            
-        if 'pae' in data:
-            pae_matrix = np.array(data['pae'])
-        elif 'predicted_aligned_error' in data:
-            pae_matrix=np.array(data['predicted_aligned_error'])
-            
-    else:
-        print("AF2 PAE file does not exist: ", pae_file_path)
-        sys.exit()
-        
+# Load BOLTZ1 data and extract plddt and pae_matrix (and ptm_matrix if available)
 if boltz1:
     # Boltz1 filenames:
     # AURKA_TPX2_model_0.cif
@@ -473,60 +307,6 @@ if boltz1:
                     iptm_boltz1[chain1][chain2]=boltz1_chain_pair_iptm_data[str(nchain1)][str(nchain2)]
     else:
         print("Boltz1 summary file does not exist: ", summary_file_path)
-
-if af3:
-    # Example Alphafold3 server filenames
-    #   fold_aurka_0_tpx2_0_full_data_0.json
-    #   fold_aurka_0_tpx2_0_summary_confidences_0.json
-    #   fold_aurka_0_tpx2_0_model_0.cif
-    # Example AlphaFold3 downloadable code filenames
-    #   confidences.json
-    #   summary_confidences.json
-    #   model1.cif
-    if os.path.exists(pae_file_path):
-        with open(pae_file_path, 'r') as file:
-            data = json.load(file)
-    else:
-        print("AF3 PAE file does not exist: ", pae_file_path)
-        sys.exit()
-
-    atom_plddts=np.array(data['atom_plddts'])
-    plddt=atom_plddts[CA_atom_num]  # pull out residue plddts from Calpha atoms
-    cb_plddt=atom_plddts[CB_atom_num]  # pull out residue plddts from Cbeta atoms for pDockQ
-        
-    # Get pairwise residue PAE matrix by identifying one token per protein residue.
-    # Modified residues have separate tokens for each atom, so need to pull out Calpha atom as token
-    # Skip ligands
-    if 'pae' in data:
-        pae_matrix_af3 = np.array(data['pae'])
-    else:
-        print("no PAE data in AF3 json file; quitting")
-        sys.exit()
-    
-    # Set pae_matrix for AF3 from subset of full PAE matrix from json file
-    token_array=np.array(token_mask)
-    pae_matrix = pae_matrix_af3[np.ix_(token_array.astype(bool), token_array.astype(bool))]
-    # Get iptm matrix from AF3 summary_confidences file
-    iptm_af3=   {chain1: {chain2: 0     for chain2 in unique_chains if chain1 != chain2} for chain1 in unique_chains}
-
-    summary_file_path = None
-    if "confidences" in pae_file_path:
-        summary_file_path = pae_file_path.replace("confidences", "summary_confidences")
-    elif "full_data" in pae_file_path:
-        summary_file_path = pae_file_path.replace("full_data", "summary_confidences")
-
-    if summary_file_path is not None and os.path.exists(summary_file_path):
-        with open(summary_file_path,'r') as file:
-            data_summary=json.load(file)
-        af3_chain_pair_iptm_data=data_summary['chain_pair_iptm']
-        for chain1 in unique_chains:
-            nchain1=  ord(chain1) - ord('A')  # map A,B,C... to 0,1,2...
-            for chain2 in unique_chains:
-                if chain1 == chain2: continue
-                nchain2=ord(chain2) - ord('A')
-                iptm_af3[chain1][chain2]=af3_chain_pair_iptm_data[nchain1][nchain2]
-    else:
-        print("AF3 summary file does not exist: ", summary_file_path)
 
 
 # Compute chain-pair-specific interchain PTM and PAE, count valid pairs, and count unique residues

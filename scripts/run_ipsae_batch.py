@@ -14,9 +14,7 @@ run_ipsae_batch.py — read a run CSV and append ipSAE/pDockQ/LIS/ipae metrics
 Example:
   python run_ipsae_batch.py \
     --run-csv run.csv \
-    --af3-dir   /path/to/af3/outputs \
-    --boltz1-dir /path/to/boltz_results_fasta_folder \
-    --colab-dir /path/to/colab \
+    --boltz-dir /path/to/boltz_results_fasta_folder \
     --ipsae-script-path ./ipsae_w_ipae.py \
     --pae-cutoff 10 --dist-cutoff 10
 
@@ -46,11 +44,9 @@ def parse_args():
 
     # Any subset is allowed; if none given, error
     p.add_argument("--boltz-dir", help="Path to BOLTZ1 outputs directory (expects .../predictions)")
-    p.add_argument("--af3-dir", help="Path to AF3 outputs directory")
-    p.add_argument("--colab-dir", help="Path to ColabFold outputs")
 
     # Optional explicit source list; otherwise inferred from dirs provided
-    p.add_argument("--sources", nargs="+", choices=["boltz","af3","colab"], help="Which sources to scan (defaults to dirs provided)")
+    p.add_argument("--sources", nargs="+", choices=["boltz"], help="Which sources to scan (defaults to dirs provided)")
 
     p.add_argument("--ipsae-script-path", default="ipsae_w_ipae.py", help="Path to ipsae_w_ipae.py")
     p.add_argument("--pae-cutoff", type=float, default=10.0, help="PAE cutoff")
@@ -67,45 +63,24 @@ def parse_args():
 # File indexing (only for provided dirs)
 # -------------------------
 
-def build_file_index(boltz_dir: Optional[str], af3_dir: Optional[str], colab_dir: Optional[str]):
+def build_file_index(boltz_dir: Optional[str]):
     index: Dict[str, Dict[str, Dict[str, object]]] = {"boltz": {}, "af3": {}, "colab": {}}
-
+    
     if boltz_dir:
         boltz_root = boltz_dir
         boltz_pattern = os.path.join(boltz_root, 'predictions', '**', '*')
         for path in glob.glob(boltz_pattern, recursive=True):
             base = os.path.basename(path)
-            if base.endswith('_model_0.cif'):
-                bid = base.replace('_model_0.cif', '')
+            if base.endswith('_model_0.pdb'):
+                bid = base.replace('.pdb', '')
                 index['boltz'].setdefault(bid, {})['structure'] = path
+                print(f"DEBUG: Added structure for {bid}: {path}")  # ADD THIS
             elif base.startswith('pae_') and base.endswith('_model_0.npz'):
-                bid = base.replace('pae_', '').replace('_model_0.npz', '')
+                bid = base.replace('pae_', '').replace('.npz', '')
                 index['boltz'].setdefault(bid, {})['confidence'] = path
+                print(f"DEBUG: Added confidence for {bid}: {path}")  # ADD THIS
 
-    if af3_dir:
-        af3_pattern = os.path.join(af3_dir, '**', '*')
-        for path in glob.glob(af3_pattern, recursive=True):
-            base = os.path.basename(path)
-            if base.endswith('_confidences.json'):
-                bid = base.replace('_confidences.json', '')
-                index['af3'].setdefault(bid, {})['confidence'] = path
-            elif base.endswith('_model.cif'):
-                bid = base.replace('_model.cif', '')
-                index['af3'].setdefault(bid, {})['structure'] = path
-
-    if colab_dir:
-        colab_pattern = os.path.join(colab_dir, '*')
-        for path in glob.glob(colab_pattern):
-            base = os.path.basename(path)
-            if '_scores_rank_001' in base and base.endswith('.json'):
-                bid = base.split('_scores_rank_001')[0]
-                entry = index['colab'].setdefault(bid, {})
-                entry.setdefault('jsons', []).append(path)
-            if '_unrelaxed_rank_001' in base and base.endswith('.pdb'):
-                bid = base.split('_unrelaxed_rank_001')[0]
-                entry = index['colab'].setdefault(bid, {})
-                entry.setdefault('pdbs', []).append(path)
-
+    print(f"DEBUG: Final index['boltz']: {index['boltz']}")  # ADD THIS
     return index
 
 # -------------------------
@@ -430,12 +405,10 @@ def main():
     
     if not sources:
         if args.boltz_dir: sources.append('boltz')
-        if args.af3_dir:    sources.append('af3')
-        if args.colab_dir:  sources.append('colab')
     if not sources:
         raise SystemExit("Provide at least one of --boltz1-dir/--af3-dir/--colab-dir or specify --sources")
 
-    index = build_file_index(args.boltz_dir, args.af3_dir, args.colab_dir)
+    index = build_file_index(args.boltz_dir)
     
 
     # backup
